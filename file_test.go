@@ -6,10 +6,14 @@ import (
 	"testing"
 )
 
-func TestFileExists(t *testing.T) {
-	wd, _ := os.Getwd()
-	var file = File(filepath.Join(wd, "file_test.go"))
+var file File
 
+func init() {
+	wd, _ := os.Getwd()
+	file = File(filepath.Join(wd, "file_test.go"))
+}
+
+func TestFileExists(t *testing.T) {
 	if !file.Exists() {
 		t.Errorf("expected file %s to exist", file)
 	}
@@ -25,7 +29,8 @@ func TestFileIsValid(t *testing.T) {
 		{"/", false},
 		{"//", false},
 		{"/var/", false},
-		{"/var/file.yml", true},
+		{"/var", false},
+		{file, true},
 	}
 
 	for _, test := range tests {
