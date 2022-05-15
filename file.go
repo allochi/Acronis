@@ -31,18 +31,20 @@ func (f *File) IsExist() bool {
 }
 
 // IsValid checks if the file is valid
-// TODO: what about file handlers in unix/linux?
 func (f File) IsValid() bool {
 	var path = f.String()
 
+	// Absolute path to file provided
 	if !filepath.IsAbs(path) {
 		return false
 	}
 
+	// File should exist
 	if !f.IsExist() {
 		return false
 	}
 
+	// Only user files
 	stat, err := os.Stat(path)
 	if err != nil {
 		return false
@@ -58,7 +60,7 @@ func (f File) IsValid() bool {
 }
 
 // IsReadPermitted checks if the user has read permission on a file
-// TODO: This requires authorization system beyond the scope of this exercise
+// Note: This requires authorization system beyond the scope of this exercise
 func (f File) IsReadPermitted() bool {
 	return true
 }
