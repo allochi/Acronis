@@ -13,8 +13,8 @@ func init() {
 	file = File(filepath.Join(wd, "file_test.go"))
 }
 
-func TestFileExists(t *testing.T) {
-	if !file.Exists() {
+func TestFileIsExist(t *testing.T) {
+	if !file.IsExist() {
 		t.Errorf("expected file %s to exist", file)
 	}
 }
@@ -30,6 +30,7 @@ func TestFileIsValid(t *testing.T) {
 		{"//", false},
 		{"/var/", false},
 		{"/var", false},
+		{"/dev/stdin", false},
 		{file, true},
 	}
 
