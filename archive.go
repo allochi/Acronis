@@ -21,14 +21,19 @@ func NewArchive(files []File) *Archive {
 		files: make(map[File]struct{}),
 	}
 
+	// Add valid files to the files sets
 	for _, file := range files {
-		archive.Add(file)
+		err := archive.Add(file)
+		if err != nil {
+			// TODO: may report list of errors back the request
+			log.Println(err)
+		}
 	}
 
 	return &archive
 }
 
-// Add add a file to the archive
+// Add add unique valid files to the archive
 func (a *Archive) Add(file File) error {
 	if !file.IsValid() {
 		return fmt.Errorf("failed to archive %s - invalid file", file)
@@ -37,17 +42,19 @@ func (a *Archive) Add(file File) error {
 	return nil
 }
 
+// Write create a temproray archive zip file and add files to it
 func (a *Archive) Write() (int, error) {
+	// WARN: How big this file could reach, and how to handle system capacity
 	archive, err := ioutil.TempFile("/tmp", "archive.*.zip")
 	if err != nil {
 		return 0, err
 	}
-	// TODO: uncomment!!!
-	// defer os.Remove(archive.Name())
+	defer os.Remove(archive.Name())
 
 	zipper := zip.NewWriter(archive)
 	defer zipper.Close()
 
+	// TODO: goroutines zip files
 	for file := range a.files {
 		log.Printf("archiving %s...", file)
 
@@ -63,6 +70,7 @@ func (a *Archive) Write() (int, error) {
 	return 0, nil
 }
 
+// zipFile handles adding one file to the archive
 func (a *Archive) zipFile(zipper *zip.Writer, file File) error {
 	f, err := os.Open(file.String())
 	if err != nil {
