@@ -1,4 +1,4 @@
-package main
+package models
 
 import (
 	"archive/zip"
@@ -7,12 +7,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 )
 
 // Archive a data structure that holds a set of unique files
 // and compile them into one zip file
 type Archive struct {
 	files map[File]struct{}
+	// failed map[File]struct{}
 }
 
 // NewArchive create new archive of files
@@ -25,7 +27,7 @@ func NewArchive(files []File) *Archive {
 	for _, file := range files {
 		err := archive.Add(file)
 		if err != nil {
-			// TODO: may report list of errors back the request
+			// archive.failed[file] = struct{}{}
 			log.Println(err)
 		}
 	}
@@ -43,17 +45,19 @@ func (a *Archive) Add(file File) error {
 }
 
 // Write create a temproray archive zip file and add files to it
-func (a *Archive) Write() (int, error) {
-	// WARN: How big this file could reach, and how to handle system capacity
+// WARN: How big this file could reach, and how to handle system capacity
+func (a *Archive) Write(w io.Writer) (int, error) {
+	// create archive file
 	archive, err := ioutil.TempFile("/tmp", "archive.*.zip")
 	if err != nil {
 		return 0, err
 	}
 	defer os.Remove(archive.Name())
 
+	// create a zip writer
 	zipper := zip.NewWriter(archive)
-	defer zipper.Close()
 
+	start := time.Now()
 	// TODO: goroutines zip files
 	for file := range a.files {
 		log.Printf("archiving %s...", file)
@@ -66,8 +70,20 @@ func (a *Archive) Write() (int, error) {
 
 		log.Printf("file %s archived", file)
 	}
+	log.Printf("duration %v", time.Since(start))
+	// TODO report failed files
+	// zipper.SetComment("What is this?")
+	zipper.Close()
 
-	return 0, nil
+	// write archive file to external writer
+	// TODO do we need this???
+	file, err := os.Open(archive.Name())
+	if err != nil {
+		log.Panicln(err)
+	}
+	n, err := io.Copy(w, file)
+	log.Println(n)
+	return 0, err
 }
 
 // zipFile handles adding one file to the archive
