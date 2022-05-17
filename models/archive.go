@@ -1,108 +1,82 @@
 package models
 
 import (
-	"archive/zip"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
 	"os"
-	"time"
+	"path/filepath"
+	"strings"
 )
 
+// File represent a file path
+type File string
+
 // Archive a data structure that holds a set of unique files
-// and compile them into one zip file
 type Archive struct {
-	files map[File]struct{}
-	// failed map[File]struct{}
+	files       map[File]struct{}
+	isPermitted func(File) bool
 }
 
 // NewArchive create new archive of files
-func NewArchive(files []File) *Archive {
-	archive := Archive{
-		files: make(map[File]struct{}),
+func NewArchive() *Archive {
+	return &Archive{
+		files:       make(map[File]struct{}),
+		isPermitted: func(f File) bool { return true },
 	}
-
-	// Add valid files to the files sets
-	for _, file := range files {
-		err := archive.Add(file)
-		if err != nil {
-			// archive.failed[file] = struct{}{}
-			log.Println(err)
-		}
-	}
-
-	return &archive
 }
 
 // Add add unique valid files to the archive
-func (a *Archive) Add(file File) error {
-	if !file.IsValid() {
-		return fmt.Errorf("failed to archive %s - invalid file", file)
-	}
-	a.files[file] = struct{}{}
-	return nil
-}
-
-// Write create a temproray archive zip file and add files to it
-// WARN: How big this file could reach, and how to handle system capacity
-func (a *Archive) Write(w io.Writer) (int, error) {
-	// create archive file
-	archive, err := ioutil.TempFile("/tmp", "archive.*.zip")
-	if err != nil {
-		return 0, err
-	}
-	defer os.Remove(archive.Name())
-
-	// create a zip writer
-	zipper := zip.NewWriter(archive)
-
-	start := time.Now()
-	// TODO: goroutines zip files
-	for file := range a.files {
-		log.Printf("archiving %s...", file)
-
-		err = a.zipFile(zipper, file)
-		if err != nil {
-			log.Printf("failed to archive %s - ", err)
-			continue
+func (a *Archive) Add(files ...File) {
+	for _, file := range files {
+		if a.IsValid(file) {
+			a.files[file] = struct{}{}
 		}
-
-		log.Printf("file %s archived", file)
 	}
-	log.Printf("duration %v", time.Since(start))
-	// TODO report failed files
-	// zipper.SetComment("What is this?")
-	zipper.Close()
-
-	// write archive file to external writer
-	// TODO do we need this???
-	file, err := os.Open(archive.Name())
-	if err != nil {
-		log.Panicln(err)
-	}
-	n, err := io.Copy(w, file)
-	log.Println(n)
-	return 0, err
 }
 
-// zipFile handles adding one file to the archive
-func (a *Archive) zipFile(zipper *zip.Writer, file File) error {
-	f, err := os.Open(file.String())
-	if err != nil {
-		return fmt.Errorf("can't open file")
+// Files return all files in the archive
+func (a *Archive) Files() []File {
+	var files = make([]File, 0, len(a.files))
+	for file := range a.files {
+		files = append(files, file)
 	}
-	defer f.Close()
+	return files
+}
 
-	w, err := zipper.Create(file.String())
-	if err != nil {
-		return fmt.Errorf("can't zip file")
+// IsValid
+func (a *Archive) IsValid(file File) bool {
+	var path = string(file)
+
+	// not empty
+	if strings.TrimSpace(path) == "" {
+		return false
 	}
 
-	_, err = io.Copy(w, f)
-	if err != nil {
-		return fmt.Errorf("can't write file to archive")
+	// only absolute path
+	if !filepath.IsAbs(path) {
+		return false
 	}
 
-	return nil
+	// only files
+	stat, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	if stat.IsDir() {
+		return false
+	}
+	if !stat.Mode().IsRegular() {
+		return false
+	}
+
+	// only permitted
+	if !a.isPermitted(file) {
+		return false
+	}
+
+	return true
+}
+
+// SetPermissionRules set a function with validation rules
+// to checks if a file can be retrived by the user
+func (a *Archive) SetPermissionRules(isPermitted func(File) bool) {
+	a.isPermitted = isPermitted
 }

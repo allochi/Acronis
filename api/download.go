@@ -8,14 +8,10 @@ import (
 	"github.com/allochi/Acronis/services"
 )
 
-type DownloadAPI struct {
-	service *services.ArchiveService
-}
+type DownloadAPI struct{}
 
 func NewDownloadAPI() *DownloadAPI {
-	return &DownloadAPI{
-		service: services.NewArchiveService(),
-	}
+	return &DownloadAPI{}
 }
 
 func (api *DownloadAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -40,17 +36,14 @@ func (api *DownloadAPI) getArchive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create an archive
-	archive := models.NewArchive(files)
-	archive.Write(w)
+	archive := models.NewArchive()
+	archive.Add(files...)
 
-	// w.WriteHeader(http.StatusOK)
-	// pass the archive and a writer to the service
-	// finalize the response
-
-	// products := api.service.GetProducts()
-	// err := api.service.EncodeSliceJSON(w, products)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
+	// create an archive service
+	service := services.NewArchiveService(archive)
+	_, err = service.Write(w)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 }
