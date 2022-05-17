@@ -40,7 +40,7 @@ func (api *DownloadAPI) getArchive(w http.ResponseWriter, r *http.Request) {
 	archive.Add(files...)
 
 	// create an archive service
-	service := services.NewArchiveService(archive)
+	service := services.NewArchiveService(r.Context(), archive)
 	_, err = service.Write(w)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

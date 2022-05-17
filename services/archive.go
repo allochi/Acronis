@@ -2,6 +2,7 @@ package services
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,19 +13,21 @@ import (
 )
 
 type ArchiveService struct {
+	ctx     context.Context
 	archive *models.Archive
 }
 
-func NewArchiveService(archive *models.Archive) *ArchiveService {
+func NewArchiveService(ctx context.Context, archive *models.Archive) *ArchiveService {
 	return &ArchiveService{
-		archive,
+		ctx:     ctx,
+		archive: archive,
 	}
 }
 
 // Write create a temproray archive zip file and add files to it
 func (s *ArchiveService) Write(w io.Writer) (int, error) {
 	// create archive file
-	// WARN: handel file size and system capacity
+	// WARN: need to handel file size and system capacity
 	archive, err := ioutil.TempFile("/tmp", "archive.*.zip")
 	if err != nil {
 		return 0, err
@@ -34,6 +37,13 @@ func (s *ArchiveService) Write(w io.Writer) (int, error) {
 	// process files
 	zipper := zip.NewWriter(archive)
 	for _, file := range s.archive.Files() {
+		// handel request cancelation
+		err := s.ctx.Err()
+		if err != nil {
+			log.Printf("process canceld: %s", err)
+			return 0, err
+		}
+
 		log.Printf("archiving: %s", file)
 
 		err = s.processFile(zipper, file)
