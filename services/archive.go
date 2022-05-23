@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -24,23 +23,15 @@ func NewArchiveService(ctx context.Context, archive *models.Archive) *ArchiveSer
 	}
 }
 
-// Write create a temproray archive zip file and add files to it
+// Write create a temporary archive zip file and add files to it
 func (s *ArchiveService) Write(w io.Writer) (int, error) {
-	// create archive file
-	// WARN: need to handel file size and system capacity
-	archive, err := ioutil.TempFile("/tmp", "archive.*.zip")
-	if err != nil {
-		return 0, err
-	}
-	defer os.Remove(archive.Name())
-
 	// process files
-	zipper := zip.NewWriter(archive)
+	zipper := zip.NewWriter(w)
 	for _, file := range s.archive.Files() {
-		// handel request cancelation
+		// handel request cancellation
 		err := s.ctx.Err()
 		if err != nil {
-			log.Printf("process canceld: %s", err)
+			log.Printf("process canceled: %s", err)
 			return 0, err
 		}
 
@@ -55,11 +46,7 @@ func (s *ArchiveService) Write(w io.Writer) (int, error) {
 		log.Printf("file %s archived", file)
 	}
 	zipper.Close()
-
-	// write archive file to external writer
-	archive.Seek(0, 0)
-	_, err = io.Copy(w, archive)
-	return 0, err
+	return 0, nil
 }
 
 // processFile handles adding one file to the archive
