@@ -11,10 +11,8 @@ import (
 func main() {
 	pid := os.Getpid()
 
-	downloadAPI := api.NewDownloadAPI()
-
 	mux := http.NewServeMux()
-	mux.Handle("/downloadzip", downloadAPI)
+	api.NewDownloadAPI(mux)
 
 	srv := &http.Server{
 		Addr:    ":9000",

@@ -35,7 +35,7 @@ func (s *ArchiveService) Write(w io.Writer) (int, error) {
 			return 0, err
 		}
 
-		log.Printf("archiving: %s", file)
+		// log.Printf("archiving: %s", file)
 
 		err = s.processFile(zipper, file)
 		if err != nil {
@@ -43,7 +43,7 @@ func (s *ArchiveService) Write(w io.Writer) (int, error) {
 			continue
 		}
 
-		log.Printf("file %s archived", file)
+		// log.Printf("file %s archived", file)
 	}
 	zipper.Close()
 	return 0, nil
